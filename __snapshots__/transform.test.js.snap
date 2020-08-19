@@ -170,6 +170,7 @@ export default css\`
 
 exports[`transform dont lose top level comments 1`] = `
 "import { css } from '@emotion/core';
+
 /*
 I wondered why the baseball was getting bigger,
           and then it hit me.
@@ -515,7 +516,7 @@ export default css\`
 exports[`transform mixin with invalid js params 1`] = `
 "import { css } from '@emotion/core';
 
-function myCoolMixin(aVar, bVar /* default: red */) {
+function myCoolMixin(aVar, bVar /* FIXME: previous default was red */) {
   return css\`
     color: \${aVar};
     background: \${bVar};

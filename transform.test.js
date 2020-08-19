@@ -928,7 +928,7 @@ describe('transform', () => {
     ).toMatchSnapshot();
   });
 
-  it.only('handle comment blocks', () => {
+  it('handle comment blocks', () => {
       expect(
           transform(`
           //// foo
