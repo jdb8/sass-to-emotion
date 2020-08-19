@@ -34,7 +34,8 @@ export default css\`
 
 exports[`transform check if var declared locally before importing 1`] = `
 "import { css } from '@emotion/core';
-import { variables as vars, simpleArrow } from '@domain-group/fe-brary';
+import { variables as vars } from '@domain-group/fe-brary';
+import { simpleArrow } from '../utils';
 
 const mapMarkerArrowSize = '8px';
 
@@ -97,7 +98,8 @@ export default css\`
 
 exports[`transform custom vars in include 1`] = `
 "import { css } from '@emotion/core';
-import { variables as vars, simpleArrow } from '@domain-group/fe-brary';
+import { variables as vars } from '@domain-group/fe-brary';
+import { simpleArrow } from '../utils';
 
 const mapMarkerArrowSize = '8px';
 
@@ -221,6 +223,44 @@ export const foo = css\`
 "
 `;
 
+exports[`transform handle comment blocks 1`] = `
+"import { css } from '@emotion/core';
+
+// // foo
+// // bar
+/*
+I wondered why the baseball was getting bigger,
+          and then it hit me.
+*/
+export const bar = css\`
+  color: pink;
+\`;
+
+// foo bar baz
+// skeleton washing his hair
+// bear washing clothes
+export const foo = css\`
+  color: black;
+\`;
+"
+`;
+
+exports[`transform handle comments with backticks 1`] = `
+"import { css } from '@emotion/core';
+
+export const bar = css\`
+  /*
+            Really cool \\\\\`comment\\\\\` with \\\\\`backticks\\\\\`!
+          */
+  color: pink;
+\`;
+
+export const foo = css\`
+  color: black; // an inline \\\\\`comment\\\\\` with \\\\\`backticks\\\\\`
+\`;
+"
+`;
+
 exports[`transform handle mixins without args 1`] = `
 "import { css } from '@emotion/core';
 
@@ -273,7 +313,8 @@ export default css\`
 
 exports[`transform imports fe-brary helpers with @extend 1`] = `
 "import { css } from '@emotion/core';
-import { variables as vars, buttonNormalize } from '@domain-group/fe-brary';
+import { variables as vars } from '@domain-group/fe-brary';
+import { buttonNormalize } from '../utils';
 
 export const agentDetailsRightArrow = css\`
   \${buttonNormalize};
@@ -288,7 +329,7 @@ export const anotherRef = css\`
 
 exports[`transform imports fe-brary helpers with @include 1`] = `
 "import { css } from '@emotion/core';
-import { resetTopMargin } from '@domain-group/fe-brary';
+import { resetTopMargin } from '../utils';
 
 export default css\`
   \${resetTopMargin()}
@@ -322,7 +363,7 @@ export default css\`
 
 exports[`transform locate multi comma rule composition ref just after shared css 1`] = `
 "import { css } from '@emotion/core';
-import { buttonNormalize } from '@domain-group/fe-brary';
+import { buttonNormalize } from '../utils';
 import { arrowColor } from '../variables';
 
 export const bar = css\`
@@ -471,6 +512,22 @@ export default css\`
 "
 `;
 
+exports[`transform mixin with invalid js params 1`] = `
+"import { css } from '@emotion/core';
+
+function myCoolMixin(aVar, bVar /* default: red */) {
+  return css\`
+    color: \${aVar};
+    background: \${bVar};
+  \`;
+}
+
+export default css\`
+  \${myCoolMixin('yellow', 'green')}
+\`;
+"
+`;
+
 exports[`transform mixins nested 1`] = `
 "import { css } from '@emotion/core';
 import { variables as vars } from '@domain-group/fe-brary';
@@ -589,8 +646,8 @@ export const fooBarBaz = css\`
 
 exports[`transform never print nested  1`] = `
 "import { css } from '@emotion/core';
-import { variables as vars, fontSmall, aTag } from '@domain-group/fe-brary';
-import { fePaListingDetailsWrapper, fePaListingDetailsHeading } from '../utils';
+import { variables as vars } from '@domain-group/fe-brary';
+import { fePaListingDetailsWrapper, fePaListingDetailsHeading, fontSmall, aTag } from '../utils';
 
 export const aboutDevelopment = css\`
   \${fePaListingDetailsWrapper};
@@ -653,8 +710,7 @@ export const additionalFeaturesListing = css\`
 
 exports[`transform no new line breaks 1`] = `
 "import { css } from '@emotion/core';
-import { aTag } from '@domain-group/fe-brary';
-import { fePaListingDetailsWrapper } from '../utils';
+import { fePaListingDetailsWrapper, aTag } from '../utils';
 
 export const aboutDevelopment = css\`
   \${fePaListingDetailsWrapper};

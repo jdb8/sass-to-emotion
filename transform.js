@@ -134,13 +134,28 @@ const processRoot = (root, filePath) => {
     return `\${${selectorToLiteral(params)}};`;
   }
 
+  function mixinInputsToFunctionArgs(inputs) {
+    return inputs.replace(/[\n\s\$]/g, '').split(',').map((input) => {
+      const [varName, defaultValue] = input.split(':');
+      if (defaultValue) {
+        global.sassToEmotionWarnings[filePath] = global.sassToEmotionWarnings[filePath] || [];
+        global.sassToEmotionWarnings[filePath].push(
+            `Default value not transformed, find the FIXME's in this file and manually fix.`
+        );
+        return `${camelCase(varName)} /* FIXME: previous default was ${defaultValue} */`;
+      }
+
+      return camelCase(varName);
+    }).join(',');
+  }
+
   function mixinParamsToFunc(str) {
     if (!str.includes('(')) {
       return `${selectorToLiteral(str.trim())}()`;
     }
 
     const [funcName, inputs] = str.split('(');
-    return `${selectorToLiteral(funcName)}(${inputs.replace(/\$/g, '')}`;
+    return `${selectorToLiteral(funcName)}(${mixinInputsToFunctionArgs(inputs)})`;
   }
 
   function capitalizeFirstLetter(string) {
@@ -328,12 +343,12 @@ const processRoot = (root, filePath) => {
     });
 
     if (!hasRefInFile) {
-      if (feBrary[literalFuncName] && typeof feBrary[literalFuncName] === 'function') {
-        if (!output.feBraryHelpers.includes(literalFuncName)) {
-          output.feBraryHelpers.push(literalFuncName);
-        }
+      if (feBrary && feBrary[literalFuncName] && typeof feBrary[literalFuncName] === 'function') {
+          if (!output.feBraryHelpers.includes(literalFuncName)) {
+              output.feBraryHelpers.push(literalFuncName);
+          }
       } else if (!output.externalHelpers.includes(literalFuncName)) {
-        output.externalHelpers.push(literalFuncName);
+          output.externalHelpers.push(literalFuncName);
       }
     }
 
@@ -619,9 +634,13 @@ module.exports = (cssString, filePath, pathToVariables = '../variables') => {
       }
 
       if (type === 'jsComment') {
+        console.log('a', {acc, text: node.text});
         if (node.text.includes('\n') || node.text.includes('\r')) {
-          return `${acc}/*\n${node.text}\n*/`;
+          console.log('b', { acc, text: node.text });
+          return `${acc}\n/*\n${node.text}\n*/`;
         }
+
+        console.log('c', {acc, text: node.text});
         return `${acc}\n// ${node.text}`;
       }
 
@@ -651,10 +670,15 @@ module.exports = (cssString, filePath, pathToVariables = '../variables') => {
         }`;
       }
 
+      // Make sure we're using code that's valid inside a css`...` template literal
+      const safeCssContents = contents.replace(/`/g, '\\`')
       return `${acc}\n${type === 'class' || !isUsedInFile ? 'export ' : ''}${
-        oneDefault && !isUsedInFile ? 'default ' : `const ${name} = `
-      }css\`${contents}\`;\n`;
+          oneDefault && !isUsedInFile ? 'default ' : `const ${name} = `
+      }css\`${safeCssContents}\`;\n`;
     }, '');
+
+
+  console.log({ pathToVariables, externalHelpers: output.externalHelpers, externalVars: output.externalVars });
 
   const js = `${fileIsJustVarExports ? '' : "import { css } from '@emotion/core'"};\n${
     output.usesFeBraryVars

@@ -147,6 +147,24 @@ describe('transform', () => {
     ).toMatchSnapshot();
   });
 
+  it('mixin with invalid js params', () => {
+      expect(
+          transform(`
+        @mixin my-cool-mixin(
+          $a-var,
+          $b-var: red,
+        ) {
+          color: $a-var;
+          background: $b-var;
+        }
+
+        .foo {
+          @include my-cool-mixin(yellow, green);
+        }
+      `)
+      ).toMatchSnapshot();
+  });
+
   it('non classname', () => {
     expect(
       transform(
@@ -908,6 +926,47 @@ describe('transform', () => {
         }
       `),
     ).toMatchSnapshot();
+  });
+
+  it.only('handle comment blocks', () => {
+      expect(
+          transform(`
+          //// foo
+          //// bar
+
+        /*
+          I wondered why the baseball was getting bigger,
+          and then it hit me.
+         */
+        .bar {
+          color: pink;
+        }
+
+        // foo bar baz
+        // skeleton washing his hair
+        // bear washing clothes
+        .foo {
+          color: black;
+        }
+      `)
+      ).toMatchSnapshot();
+  });
+
+  it('handle comments with backticks', () => {
+      expect(
+          transform(`
+        .bar {
+          /*
+            Really cool \`comment\` with \`backticks\`!
+          */
+          color: pink;
+        }
+
+        .foo {
+          color: black; // an inline \`comment\` with \`backticks\`
+        }
+      `)
+      ).toMatchSnapshot();
   });
 
   it('check if var declared locally before importing', () => {
