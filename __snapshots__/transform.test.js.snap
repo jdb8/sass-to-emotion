@@ -513,6 +513,32 @@ export default css\`
 "
 `;
 
+exports[`transform mixin using @content 1`] = `
+"import { css } from '@emotion/core';
+
+function coolContents(content) {
+  return css\`
+    \${content};
+  \`;
+}
+
+function coolContentsArgs(a, b, content) {
+  return css\`
+    color: \${a};
+    background: \${b};
+    \${content};
+  \`;
+}
+
+export default css\`
+  color: red;
+  \${coolContents(css([css('text-decoration: none')]))}
+
+  \${coolContentsArgs('yellow', 'blue', css([css('font-weight: bold')]))}
+\`;
+"
+`;
+
 exports[`transform mixin with invalid js params 1`] = `
 "import { css } from '@emotion/core';
 

@@ -26,6 +26,7 @@ function scssFileToJs(filePath) {
         path.dirname(scssFileToJs(path.resolve(filePath))),
         path.join(process.cwd(), 'src', 'styles'),
       );
+
       const js = transform(
         css,
         filePath,

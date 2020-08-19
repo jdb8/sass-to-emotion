@@ -165,6 +165,33 @@ describe('transform', () => {
       ).toMatchSnapshot();
   });
 
+  it('mixin using @content', () => {
+      expect(
+          transform(`
+        @mixin cool-contents {
+          @content;
+        }
+
+        @mixin cool-contents-args($a, $b) {
+          color: $a;
+          background: $b;
+          @content;
+        }
+
+        .foo {
+          color: red;
+          @include cool-contents {
+            text-decoration: none;
+          }
+          @include cool-contents-args(yellow, blue) {
+            font-weight: bold;
+          }
+        }
+      `)
+      ).toMatchSnapshot();
+
+  });
+
   it('non classname', () => {
     expect(
       transform(
