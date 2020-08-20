@@ -28,8 +28,5 @@
   },
   "engines": {
     "node": ">10.12.0"
-  },
-  "optionalDependencies": {
-    "@domain-group/fe-brary": "^26.2.1"
   }
 }
