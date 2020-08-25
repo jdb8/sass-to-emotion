@@ -147,6 +147,71 @@ describe('transform', () => {
     ).toMatchSnapshot();
   });
 
+  it('mixin with invalid js params', () => {
+      expect(
+          transform(`
+        @mixin my-cool-mixin(
+          $a-var,
+          $b-var: red,
+        ) {
+          color: $a-var;
+          background: $b-var;
+        }
+
+        .foo {
+          @include my-cool-mixin(yellow, green);
+        }
+      `)
+      ).toMatchSnapshot();
+  });
+
+  it('mixin using @content', () => {
+      expect(
+          transform(`
+        @mixin cool-contents {
+          @content;
+        }
+
+        @mixin cool-contents-args($a, $b) {
+          color: $a;
+          background: $b;
+          @content;
+        }
+
+        .foo {
+          color: red;
+          @include cool-contents {
+            text-decoration: none;
+          }
+          @include cool-contents-args(yellow, blue) {
+            font-weight: bold;
+          }
+        }
+      `)
+      ).toMatchSnapshot();
+
+  });
+
+  it('mixin with nested @include', () => {
+      expect(
+          transform(`
+        @mixin my-mixin {
+          color: blue;
+        }
+
+        @mixin another-mixin {
+          @include my-mixin;
+          font-weight: bold;
+        }
+
+        .foo {
+          text-decoration: none;
+          @include another-mixin;
+        }
+      `)
+      ).toMatchSnapshot();
+  });
+
   it('non classname', () => {
     expect(
       transform(
@@ -908,6 +973,47 @@ describe('transform', () => {
         }
       `),
     ).toMatchSnapshot();
+  });
+
+  it('handle comment blocks', () => {
+      expect(
+          transform(`
+          //// foo
+          //// bar
+
+        /*
+          I wondered why the baseball was getting bigger,
+          and then it hit me.
+         */
+        .bar {
+          color: pink;
+        }
+
+        // foo bar baz
+        // skeleton washing his hair
+        // bear washing clothes
+        .foo {
+          color: black;
+        }
+      `)
+      ).toMatchSnapshot();
+  });
+
+  it('handle comments with backticks', () => {
+      expect(
+          transform(`
+        .bar {
+          /*
+            Really cool \`comment\` with \`backticks\`!
+          */
+          color: pink;
+        }
+
+        .foo {
+          color: black; // an inline \`comment\` with \`backticks\`
+        }
+      `)
+      ).toMatchSnapshot();
   });
 
   it('check if var declared locally before importing', () => {

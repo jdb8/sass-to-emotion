@@ -134,13 +134,28 @@ const processRoot = (root, filePath) => {
     return `\${${selectorToLiteral(params)}};`;
   }
 
-  function mixinParamsToFunc(str) {
-    if (!str.includes('(')) {
-      return `${selectorToLiteral(str.trim())}()`;
-    }
+  function mixinInputsToFunctionArgs(inputsArray) {
+    return inputsArray.filter(Boolean).map((input) => {
+      const [varName, defaultValue] = input.split(':');
+      if (defaultValue) {
+        global.sassToEmotionWarnings[filePath] = global.sassToEmotionWarnings[filePath] || [];
+        global.sassToEmotionWarnings[filePath].push(
+            `Default value not transformed, find the FIXME's in this file and manually fix.`
+        );
+        return `${camelCase(varName)} /* FIXME: previous default was ${defaultValue} */`;
+      }
 
-    const [funcName, inputs] = str.split('(');
-    return `${selectorToLiteral(funcName)}(${inputs.replace(/\$/g, '')}`;
+      return camelCase(varName);
+    }).join(',');
+  }
+
+  function mixinParamsToFunc(str, additionalParams = []) {
+    const [funcName, inputs = ''] = str.split('(');
+    const inputsArray = [
+      ...inputs.replace(/[\n\s\$]/g, '').split(','),
+      ...additionalParams,
+    ];
+    return `${selectorToLiteral(funcName)}(${mixinInputsToFunctionArgs(inputsArray)})`;
   }
 
   function capitalizeFirstLetter(string) {
@@ -312,13 +327,26 @@ const processRoot = (root, filePath) => {
 
   root.walkAtRules('include', (atRule) => {
     atRule.originalParams = atRule.params;
-    const [funcName, inputs] = atRule.params.split('(');
+    const [funcName, inputs = ''] = atRule.params.split('(');
+    const inputsWithoutBraces = inputs.slice(0, -1);
+    const args = inputsWithoutBraces
+        .split(',')
+        .filter(Boolean)
+        .map((arg) => handleSassVarUnescaped(arg.trim()));
     const literalFuncName = selectorToLiteral(funcName);
-    // check for https://github.com/eduardoboucas/include-media
-    if (atRule.nodes && atRule.nodes.length && atRule.params.trim().startsWith('media(')) {
-      atRule.name = MEDIA_HELPER;
-      atRule.params = `\${${atRule.params.trim()}}`;
-      return;
+
+    if (atRule.nodes && atRule.nodes.length) {
+      // check for https://github.com/eduardoboucas/include-media
+      if (atRule.params.trim().startsWith('media(')) {
+        atRule.name = MEDIA_HELPER;
+        atRule.params = `\${${atRule.params.trim()}}`;
+        return;
+      }
+
+      // non-media() include() with a body - mixin assumed to be
+      // using @contents
+      // TODO: move this to a constant
+      args.push('__CONTENTS_PLACEHOLDER__');
     }
 
     let hasRefInFile;
@@ -328,26 +356,19 @@ const processRoot = (root, filePath) => {
     });
 
     if (!hasRefInFile) {
-      if (feBrary[literalFuncName] && typeof feBrary[literalFuncName] === 'function') {
-        if (!output.feBraryHelpers.includes(literalFuncName)) {
-          output.feBraryHelpers.push(literalFuncName);
-        }
+      if (feBrary && feBrary[literalFuncName] && typeof feBrary[literalFuncName] === 'function') {
+          if (!output.feBraryHelpers.includes(literalFuncName)) {
+              output.feBraryHelpers.push(literalFuncName);
+          }
       } else if (!output.externalHelpers.includes(literalFuncName)) {
-        output.externalHelpers.push(literalFuncName);
+          output.externalHelpers.push(literalFuncName);
       }
     }
-
-    if (!atRule.params.includes('(')) {
-      atRule.params = `\${${selectorToLiteral(atRule.params.trim())}()}`;
-      return;
-    }
-
-    const inputsWithoutBraces = inputs.slice(0, -1);
-    const args = inputsWithoutBraces.split(',').map(arg => handleSassVarUnescaped(arg.trim()));
 
     atRule.params = `\${${selectorToLiteral(funcName.trim())} (${args.join(', ')})}`;
   });
 
+  // TODO: move this before atRules to correctly sanitize/record decls used there?
   root.walkDecls((decl) => {
     if (decl.parent && decl.parent === root) {
       let isUsedInFile = false;
@@ -523,9 +544,34 @@ const processRoot = (root, filePath) => {
         return;
       }
 
-      // handle mixins and placeholder's
-      if (node && ['extend', 'include'].includes(node.name)) {
+      // handle extends
+      if (node && node.name === 'extend') {
         contents += node.params;
+        return;
+      }
+
+      if (node && node.name === 'include') {
+        if (startOrEnd === 'end') {
+            // only log the include() once
+            return;
+        }
+
+        let params = node.params;
+
+        // We need to pass in content (injected last arg) to our mixin
+        if (node.nodes && node.nodes.length) {
+            node.nodes.forEach((node) => (node.includedInContentsArg = true));
+            const cssContents = node.nodes.map((node) => `css('${node.prop}: ${node.value}')`);
+            // TODO: make this a single string passed to css() rather than an array of css() calls
+            params = params.replace('__CONTENTS_PLACEHOLDER__', `css([${cssContents}])`);
+        }
+
+        contents += params;
+        return;
+      }
+
+      if (node && node.includedInContentsArg) {
+        // Already added it earlier
         return;
       }
 
@@ -550,7 +596,16 @@ const processRoot = (root, filePath) => {
 
   root.walkAtRules('mixin', (atRule) => {
     const { params } = atRule;
-    const selector = mixinParamsToFunc(params);
+
+    let additionalParams = [];
+    root.walkAtRules('content', (contentAtRule) => {
+      if (contentAtRule.parent === atRule) {
+        additionalParams = ['$content'];
+        return false;
+      }
+    })
+
+    const selector = mixinParamsToFunc(params, additionalParams);
 
     let contents = '';
     postcssScss.stringify(atRule, (string, node, startOrEnd) => {
@@ -620,15 +675,24 @@ module.exports = (cssString, filePath, pathToVariables = '../variables') => {
 
       if (type === 'jsComment') {
         if (node.text.includes('\n') || node.text.includes('\r')) {
-          return `${acc}/*\n${node.text}\n*/`;
+          return `${acc}\n/*\n${node.text}\n*/`;
         }
+
         return `${acc}\n// ${node.text}`;
       }
 
       if (type === 'mixin') {
+        const filteredContentsAtRule = contents
+          // Replace any instance of @content with the new parameter `content` that's
+          // now in scope - our @include code will pass it in
+          .replace(/\@content/g, '${content}')
+          // Replace @include since it's never valid inside a css`` mixin body
+          // (we already properly include the mixin via js template literal)
+          .replace(/\@include/g, '');
+
         return `${acc}\n${isUsedInFile ? '' : 'export '}${
           oneDefault && !isUsedInFile ? ' default ' : ''
-        }function ${name} {\n  return css\`${contents}\n  \`;\n}\n`;
+        }function ${name} {\n  return css\`${filteredContentsAtRule}\n  \`;\n}\n`;
       }
 
       if (type === 'constVar') {
@@ -651,9 +715,11 @@ module.exports = (cssString, filePath, pathToVariables = '../variables') => {
         }`;
       }
 
+      // Make sure we're using code that's valid inside a css`...` template literal
+      const safeCssContents = contents.replace(/`/g, '\\`')
       return `${acc}\n${type === 'class' || !isUsedInFile ? 'export ' : ''}${
-        oneDefault && !isUsedInFile ? 'default ' : `const ${name} = `
-      }css\`${contents}\`;\n`;
+          oneDefault && !isUsedInFile ? 'default ' : `const ${name} = `
+      }css\`${safeCssContents}\`;\n`;
     }, '');
 
   const js = `${fileIsJustVarExports ? '' : "import { css } from '@emotion/core'"};\n${

@@ -6,7 +6,7 @@ const chalk = require('chalk');
 const transform = require('./transform');
 
 function scssFileToJs(filePath) {
-  const newFilePath = filePath.replace('/scss/', '/styles/').replace('.scss', '.js');
+  const newFilePath = filePath.replace('/scss/', '/styles/').replace('.scss', '.emotion.js');
   const filenewFilePathDir = path.dirname(newFilePath);
   const filenewFilePathBase = path.basename(newFilePath);
 
@@ -26,6 +26,7 @@ function scssFileToJs(filePath) {
         path.dirname(scssFileToJs(path.resolve(filePath))),
         path.join(process.cwd(), 'src', 'styles'),
       );
+
       const js = transform(
         css,
         filePath,
