@@ -192,6 +192,26 @@ describe('transform', () => {
 
   });
 
+  it('mixin with nested @include', () => {
+      expect(
+          transform(`
+        @mixin my-mixin {
+          color: blue;
+        }
+
+        @mixin another-mixin {
+          @include my-mixin;
+          font-weight: bold;
+        }
+
+        .foo {
+          text-decoration: none;
+          @include another-mixin;
+        }
+      `)
+      ).toMatchSnapshot();
+  });
+
   it('non classname', () => {
     expect(
       transform(

@@ -682,9 +682,14 @@ module.exports = (cssString, filePath, pathToVariables = '../variables') => {
       }
 
       if (type === 'mixin') {
-        // Replace any instance of @content with the new parameter `content` that's
-        // now in scope - our @include code will pass it in
-        const filteredContentsAtRule = contents.replace(/\@content/g, '${content}');
+        const filteredContentsAtRule = contents
+          // Replace any instance of @content with the new parameter `content` that's
+          // now in scope - our @include code will pass it in
+          .replace(/\@content/g, '${content}')
+          // Replace @include since it's never valid inside a css`` mixin body
+          // (we already properly include the mixin via js template literal)
+          .replace(/\@include/g, '');
+
         return `${acc}\n${isUsedInFile ? '' : 'export '}${
           oneDefault && !isUsedInFile ? ' default ' : ''
         }function ${name} {\n  return css\`${filteredContentsAtRule}\n  \`;\n}\n`;

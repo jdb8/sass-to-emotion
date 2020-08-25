@@ -555,6 +555,29 @@ export default css\`
 "
 `;
 
+exports[`transform mixin with nested @include 1`] = `
+"import { css } from '@emotion/core';
+
+function myMixin() {
+  return css\`
+    color: blue;
+  \`;
+}
+
+function anotherMixin() {
+  return css\`
+    \${myMixin()};
+    font-weight: bold;
+  \`;
+}
+
+export default css\`
+  text-decoration: none;
+  \${anotherMixin()}
+\`;
+"
+`;
+
 exports[`transform mixins nested 1`] = `
 "import { css } from '@emotion/core';
 import { variables as vars } from '@domain-group/fe-brary';
